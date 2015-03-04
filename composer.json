@@ -1,0 +1,24 @@
+{
+	"name": "zauberfisch/silverstripe-better-requirements",
+	"description": "Replacement for the SilverStripe Requirements_Backend",
+	"type": "silverstripe-module",
+	"homepage": "https://github.com/Zauberfisch/silverstripe-better-requirements",
+	"keywords": ["silverstripe", "gridfield"],
+	"license": "BSD-3-Clause",
+	"authors": [
+		{
+			"name": "Zauberfisch",
+			"email": "zauberfisch@zauberfisch.at"
+		}
+	],
+	"support": {
+		"issues": "https://github.com/Zauberfisch/silverstripe-better-requirements/issues"
+	},
+	"require": {
+		"silverstripe/framework": ">=3.1",
+		"symfony/process": "3.0.*@dev"
+	},
+	"extra": {
+		"installer-name": "better-requirements"
+	}
+}
