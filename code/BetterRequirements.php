@@ -6,6 +6,8 @@
 class BetterRequirements_Backend extends Requirements_Backend implements Flushable {
 	private static $compile_in_live = false;
 	private static $compile_in_dev = true;
+	private static $compile_in_test = true;
+	private static $compile_in_flush = true;
 	protected $compiled = false;
 	protected static $flush = false;
 	protected $sassFiles = [];
@@ -99,8 +101,9 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 	protected function compile() {
 		if (
 			!$this->compiled && (
-				static::$flush ||
-				Config::inst()->get(__CLASS__, 'compile_in_live') ||
+				(static::$flush && Config::inst()->get(__CLASS__, 'compile_in_flush')) ||
+				(Director::isLive() && Config::inst()->get(__CLASS__, 'compile_in_live')) ||
+				(Director::isTest() && Config::inst()->get(__CLASS__, 'compile_in_test')) ||
 				(Director::isDev() && Config::inst()->get(__CLASS__, 'compile_in_dev'))
 			)
 		) {
