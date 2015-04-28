@@ -3,7 +3,7 @@
 	"description": "Replacement for the SilverStripe Requirements_Backend",
 	"type": "silverstripe-module",
 	"homepage": "https://github.com/Zauberfisch/silverstripe-better-requirements",
-	"keywords": ["silverstripe", "gridfield"],
+	"keywords": ["silverstripe"],
 	"license": "BSD-3-Clause",
 	"authors": [
 		{
@@ -16,7 +16,7 @@
 	},
 	"require": {
 		"silverstripe/framework": ">=3.1",
-		"symfony/process": "3.0.*@dev"
+		"symfony/process": "2.8.*@dev"
 	},
 	"extra": {
 		"installer-name": "better-requirements"
