@@ -11,6 +11,7 @@ re-factored.
 ## Current Features
 
 - compile sass/scss files using sassc (libsass)
+- compile less files using less.php
 
 ## Installation
 
@@ -22,6 +23,10 @@ re-factored.
 - sassc needs to be installed on your system
 	If your sassc executable is not in any of the paths, you can set the constant
 	SS_SASSC_PATH (`define('SS_SASSC_PATH', '/path/to/sassc')`).    
+
+#### Requirements for using less
+
+- the composer package `leafo/lessphp`
 
 #### Installing the module
 
@@ -58,15 +63,23 @@ Just make sure you set the backend before you use any other Requirements methods
 	}
 
 After this, you can use Requirements just the same as you did before, with one addition:
-You can require sass/scss files.    
-The backend will replace 'sass'/'scss' in the file extension and folder names.
+You can require sass/scss/less files.    
+The backend will replace 'sass'/'scss'/'less' in the file path and append '.css'.
 
-	// create and require mysite/css/myfile.css
+	// create and require mysite/css/myfile.scss.css
 	Requirements::css(project() . '/scss/myfile.scss');
-	// will create and require mysite/css/otherfile.css
-	Requirements::css('mysite/css/otherfile.scss');
-	// will create and require themes/mytheme/css/myfile.css
-	Requirements::css($this->ThemeDir() . '/sass/myfile.sass');
+	// will create and require mysite/css/otherfile.sass.css
+	Requirements::css('mysite/sass/otherfile.sass');
+	// will create and require themes/mytheme/css/myfile.less.css
+	Requirements::css($this->ThemeDir() . '/less/myfile.less');
+	// it also works with combined files and mixed file types:
+	Requirements::combine_files('main.css', [
+		project() . '/css/normal-file.css',
+		project() . '/scss/scss-file.scss',
+		project() . '/less/less-file.less',
+		project() . '/scss/main.scss',
+		project() . '/less/main.less',
+	]);
 
 #### Compiling/Preprocessing
 
@@ -81,6 +94,15 @@ You can change the configuration for this in a yml config file:
 	BetterRequirements_Backend:
 	  compile_in_live: true # default: false
 	  compile_in_dev: true # default: true
+
+
+**Should you experence a long dalay until files get compiled after you change them, try to 
+change the cache key to md5_file, then the file check will actually consider the content 
+rather thant he file timestamp:**
+
+	BetterRequirements_Backend:
+	  cache_key_method: 'md5_file' # default: 'filemtime'
+
 
 # Notes
 

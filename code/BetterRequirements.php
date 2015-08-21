@@ -8,46 +8,51 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 	private static $compile_in_dev = true;
 	private static $compile_in_test = true;
 	private static $compile_in_flush = true;
+	private static $cache_key_method = 'filemtime';
 	protected $compiled = false;
 	protected static $flush = false;
-	protected $sassFiles = [];
 	protected $log = [];
-	protected $sassFilesCache;
+	protected $files = [];
+	protected $filesCache;
 
-	protected function sassFilesCache() {
-		if (!is_array($this->sassFilesCache)) {
-			$fileName = Director::getAbsFile($this->getCombinedFilesFolder() . '/_sass_files_cache.json');
+	protected function cacheKey($fileName) {
+		return call_user_func(Config::inst()->get(__CLASS__, 'cache_key_method'), $fileName);
+	}
+
+	protected function filesCache() {
+		if (!is_array($this->filesCache)) {
+			$fileName = Director::getAbsFile($this->getCombinedFilesFolder() . '/_better_requirements_files_cache.json');
 			if (file_exists($fileName)) {
-				$this->sassFilesCache = json_decode(
+				$this->filesCache = json_decode(
 					file_get_contents($fileName),
 					true
 				);
 			} else {
-				$this->sassFilesCache = [];
+				$this->filesCache = [];
 			}
 		}
-		return $this->sassFilesCache;
+		return $this->filesCache;
 	}
 
-	protected function sassFilesCacheSave() {
-		file_put_contents(Director::getAbsFile($this->getCombinedFilesFolder() . '/_sass_files_cache.json'), json_encode($this->sassFilesCache()));
+	protected function filesCacheSave() {
+		file_put_contents(Director::getAbsFile($this->getCombinedFilesFolder() . '/_better_requirements_files_cache.json'), json_encode($this->filesCache()));
 	}
 
-	protected function sassFilesCacheIsChanged($fileName) {
+	protected function filesCacheIsChanged($fileName) {
 		$fileName = Director::getAbsFile($fileName);
-		$info = $this->sassFilesCache();
-		$time = file_exists($fileName) ? filemtime($fileName) : false;
-		if (!isset($info[$fileName]) || !$time || $info[$fileName] != $time) {
+		$info = $this->filesCache();
+		$cacheKey = file_exists($fileName) ? $this->cacheKey($fileName) : false;
+		if (!isset($info[$fileName]) || !$cacheKey || $info[$fileName] != $cacheKey) {
 			return true;
 		}
 		return false;
 	}
 
-	protected function sassFilesCacheAdd($fileName) {
+	protected function filesCacheAdd($fileName) {
 		$fileName = Director::getAbsFile($fileName);
-		$info = $this->sassFilesCache();
-		$info[$fileName] = filemtime($fileName);
-		$this->sassFilesCache = $info;
+		$info = $this->filesCache();
+		$info[$fileName] = $this->cacheKey($fileName);
+		$this->filesCache = $info;
 	}
 
 	/**
@@ -73,27 +78,23 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 
 
 	public function css($file, $media = null) {
-		$file = $this->handleSassFile($file);
+		$file = $this->collectFile($file);
 		parent::css($file, $media);
 	}
 
 	public function combine_files($combinedFileName, $files, $media = null) {
 		foreach ($files as $i => $fileName) {
-			$files[$i] = $this->handleSassFile($fileName);
+			$files[$i] = $this->collectFile($fileName);
 		}
 		return parent::combine_files($combinedFileName, $files, $media);
 	}
 
-	protected function handleSassFile($fileName) {
+	protected function collectFile($fileName) {
 		$_fileName = explode('.', $fileName);
 		$ext = array_pop($_fileName);
-		$fileNameNoExt = implode('.', $_fileName);
-		if (in_array(strtolower($ext), ['scss', 'sass'])) {
-			$ext = 'css';
-			$cssFileName = "$fileNameNoExt.$ext";
-			$cssFileName = str_ireplace(['/sass/','/scss/'], '/css/', $cssFileName);
-			$this->sassFiles[$fileName] = $cssFileName;
-			return $cssFileName;
+		if (in_array($ext, ['scss', 'sass', 'less'])) {
+			$this->files[$ext][$fileName] = str_ireplace("/$ext/", '/css/', $fileName) . '.css';
+			return $this->files[$ext][$fileName];
 		}
 		return $fileName;
 	}
@@ -109,50 +110,73 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 		) {
 			// only allow compile to run once
 			$this->compiled = true;
-			foreach ($this->sassFiles as $sassFileName => $cssFileName) {
-				$this->compileFile($sassFileName, $cssFileName);
-			}
-			$js = [];
-			foreach ($this->log as $line) {
-				$type = 'log';
-				if (is_array($line)) {
-					$type = $line[1];
-					$line = $line[0];
+			foreach ($this->files as $category => $files) {
+				foreach ($files as $source => $target) {
+					$this->{"compile{$category}File"}($source, $target);
 				}
-				$line = str_replace("'", "\\'", $line);
-				$js[] = sprintf("console.%s('%s');", $type, $line);
 			}
-			Requirements::customScript(implode(PHP_EOL, $js));
+			if ($this->log) {
+				$js = [];
+				foreach ($this->log as $line) {
+					$type = 'log';
+					if (is_array($line)) {
+						$type = $line[1];
+						$line = $line[0];
+					}
+					$js[] = sprintf("console.%s(%s);", $type, json_encode($line));
+				}
+				Requirements::customScript(implode(PHP_EOL, $js));
+			}
 			$this->log = [];
-			$this->sassFilesCacheSave();
+			$this->filesCacheSave();
 		}
 	}
 
-	protected function compileFile($sassFile, $cssFile) {
-		$sassc = 'sassc';
-		if (defined('SS_SASSC_PATH')) {
-			$sassc = SS_SASSC_PATH;
-		}
-		$cssFilePath = trim(Director::getAbsFile($cssFile));
-		$sassFilePath = trim(Director::getAbsFile($sassFile));
-		if (static::$flush || $this->sassFilesCacheIsChanged($sassFile)) {
-			$command = $sassc . " " . escapeshellarg($sassFilePath);
-
-			$this->log[] = ["compiling $sassFile", 'info'];
-
-			$process = new \Symfony\Component\Process\Process($command);
-			$process->run();
-
-			if ($process->isSuccessful()) {
-				$css = $process->getOutput();
-				if (!file_exists(dirname($cssFilePath))) {
-					mkdir(dirname($cssFilePath), null, true);
-				}
-				file_put_contents($cssFilePath, $css);
-				$this->sassFilesCacheAdd($sassFile);
-			} else {
-				throw new Exception("failed to compile stylesheets with command \"$command\": non-zero exit code {$process->getExitCode()} '{$process->getExitCodeText()}'. (Output: '{$process->getErrorOutput()}')");
+	protected function compileLESSFile($lessFile, $cssFile) {
+		if (static::$flush || $this->filesCacheIsChanged($lessFile)) {
+			$bin = 'lessc';
+			if (defined('SS_LESSC_PATH')) {
+				$bin = SS_LESSC_PATH;
 			}
+			$this->compileWithCommand($bin, $lessFile, $cssFile);
+		}
+	}
+
+	protected function compileSCSSFile($scssFile, $cssFile) {
+		$this->compileSASSFile($scssFile, $cssFile);
+	}
+
+	protected function compileSASSFile($sassFile, $cssFile) {
+		if (static::$flush || $this->filesCacheIsChanged($sassFile)) {
+			$bin = 'sassc';
+			if (defined('SS_SASSC_PATH')) {
+				$bin = SS_SASSC_PATH;
+			}
+			$this->compileWithCommand($bin, $sassFile, $cssFile);
+		}
+	}
+
+	protected function compileWithCommand($bin, $source, $target) {
+		$sourceFilePath = trim(Director::getAbsFile($source));
+		$targetFilePath = trim(Director::getAbsFile($target));
+		$command = $bin . " " . escapeshellarg($sourceFilePath);
+		$process = new \Symfony\Component\Process\Process($command);
+		$process->run();
+		if ($process->isSuccessful()) {
+			$css = $process->getOutput();
+			if (!file_exists(dirname($targetFilePath))) {
+				mkdir(dirname($targetFilePath), null, true);
+			}
+			file_put_contents($targetFilePath, $css);
+			$this->filesCacheAdd($source);
+			$this->log[] = ["compiled $source to $target", 'info'];
+		} else {
+			$message = $process->getErrorOutput();
+			if ($process->getExitCode() != 1 || !$message) {
+				$message = "\"$command\": non-zero exit code {$process->getExitCode()} '{$process->getExitCodeText()}'. (Output: '$message')";
+			}
+			$this->log[] = ["failed to compile $source with $bin: $message", 'error'];
+			SS_Log::log(new Exception($message), SS_Log::ERR);
 		}
 	}
 }

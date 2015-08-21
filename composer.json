@@ -3,7 +3,7 @@
 	"description": "Replacement for the SilverStripe Requirements_Backend",
 	"type": "silverstripe-module",
 	"homepage": "https://github.com/Zauberfisch/silverstripe-better-requirements",
-	"keywords": ["silverstripe"],
+	"keywords": ["silverstripe", "less", "sass", "scss"],
 	"license": "BSD-3-Clause",
 	"authors": [
 		{
