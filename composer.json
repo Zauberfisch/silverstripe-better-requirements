@@ -15,7 +15,7 @@
 		"issues": "https://github.com/Zauberfisch/silverstripe-better-requirements/issues"
 	},
 	"require": {
-		"silverstripe/framework": ">=3.1",
+		"silverstripe/framework": "^3.1",
 		"symfony/process": "2.8.*@dev"
 	},
 	"extra": {
