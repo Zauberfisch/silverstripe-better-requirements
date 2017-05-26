@@ -1,9 +1,20 @@
 <?php
 
+namespace BetterRequirements;
+
+use Psr\Log\LoggerInterface;
+use SilverStripe\Control\Director;
+use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Core\Flushable;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\View\Requirements;
+use SilverStripe\View\Requirements_Backend;
+
 /**
  * @author zauberfisch
  */
-class BetterRequirements_Backend extends Requirements_Backend implements Flushable {
+class Backend extends Requirements_Backend implements Flushable {
 	private static $compile_in_live = false;
 	private static $compile_in_dev = true;
 	private static $compile_in_test = true;
@@ -66,14 +77,14 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 		static::$flush = true;
 	}
 
-	public function includeInHTML($templateFile, $content) {
+	public function includeInHTML($content) {
 		$this->compile();
-		return parent::includeInHTML($templateFile, $content);
+		return parent::includeInHTML($content);
 	}
 
-	public function include_in_response(SS_HTTPResponse $response) {
+	public function includeInResponse(HTTPResponse $response) {
 		$this->compile();
-		return parent::include_in_response($response);
+		parent::includeInResponse($response);
 	}
 
 
@@ -82,11 +93,11 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 		parent::css($file, $media);
 	}
 
-	public function combine_files($combinedFileName, $files, $media = null) {
+	public function combineFiles($combinedFileName, $files, $media = null) {
 		foreach ($files as $i => $fileName) {
 			$files[$i] = $this->collectFile($fileName);
 		}
-		return parent::combine_files($combinedFileName, $files, $media);
+		parent::combineFiles($combinedFileName, $files, $media);
 	}
 
 	protected function collectFile($fileName) {
@@ -175,8 +186,11 @@ class BetterRequirements_Backend extends Requirements_Backend implements Flushab
 			if ($process->getExitCode() != 1 || !$message) {
 				$message = "\"$command\": non-zero exit code {$process->getExitCode()} '{$process->getExitCodeText()}'. (Output: '$message')";
 			}
-			$this->log[] = ["failed to compile $source with $bin: $message", 'error'];
-			SS_Log::log(new Exception($message), SS_Log::ERR);
+			$message = "failed to compile $source with \"$bin\": $message";
+			$this->log[] = [$message, 'error'];
+			/** @var LoggerInterface $logger */
+			$logger = Injector::inst()->get(LoggerInterface::class);
+			$logger->info($message);
 		}
 	}
 }

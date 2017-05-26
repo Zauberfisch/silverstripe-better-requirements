@@ -46,14 +46,14 @@ have to [compile it yourself](http://libsass.org/#sassc) or use Zauberfisch's
 ## Usage
 
 By itself, this module does nothing. You will have to set the backend for Requirements.
-A good place to do this is in `Page_Controller->init()` but can be at any other place as well.
+A good place to do this is in `PageController->init()` but can be at any other place as well.
 Just make sure you set the backend before you use any other Requirements methods.
 
-	class Page_Controller extends ContentController {
+	class PageController extends \SilverStripe\CMS\Controllers\ContentController {
 		// ...
 		
 		public function init() {
-			Requirements::set_backend(new BetterRequirements_Backend());
+			Requirements::set_backend(new \BetterRequirements\Backend());
 			parent::init();
 			
 			// ...
@@ -67,13 +67,13 @@ You can require sass/scss/less files.
 The backend will replace 'sass'/'scss'/'less' in the file path and append '.css'.
 
 	// create and require mysite/css/myfile.scss.css
-	Requirements::css(project() . '/scss/myfile.scss');
+	\SilverStripe\View\Requirements::css(project() . '/scss/myfile.scss');
 	// will create and require mysite/css/otherfile.sass.css
-	Requirements::css('mysite/sass/otherfile.sass');
+	\SilverStripe\View\Requirements::css('mysite/sass/otherfile.sass');
 	// will create and require themes/mytheme/css/myfile.less.css
-	Requirements::css($this->ThemeDir() . '/less/myfile.less');
+	\SilverStripe\View\Requirements::css($this->ThemeDir() . '/less/myfile.less');
 	// it also works with combined files and mixed file types:
-	Requirements::combine_files('main.css', [
+	\SilverStripe\View\Requirements::combine_files('main.css', [
 		project() . '/css/normal-file.css',
 		project() . '/scss/scss-file.scss',
 		project() . '/less/less-file.less',
@@ -86,21 +86,21 @@ The backend will replace 'sass'/'scss'/'less' in the file path and append '.css'
 Compiling/Preprocessing will take place when one of the following conditions is met:
 
 - `?flush=1` (will re-compile all files)
-- config `BetterRequirements_Backend.compile_in_live`
-- Site is in dev mode and config `BetterRequirements_Backend.compile_in_dev` is true
+- config `\BetterRequirements\Backend.compile_in_live`
+- Site is in dev mode and config `\BetterRequirements\Backend.compile_in_dev` is true
 
 You can change the configuration for this in a yml config file:
 
-	BetterRequirements_Backend:
+	\BetterRequirements\Backend:
 	  compile_in_live: true # default: false
 	  compile_in_dev: true # default: true
 
 
-**Should you experence a long dalay until files get compiled after you change them, try to 
+**Should you experience a long dalay until files get compiled after you change them, try to 
 change the cache key to md5_file, then the file check will actually consider the content 
 rather thant he file timestamp:**
 
-	BetterRequirements_Backend:
+	\BetterRequirements\Backend:
 	  cache_key_method: 'md5_file' # default: 'filemtime'
 
 
